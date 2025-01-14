@@ -41,7 +41,8 @@
             font-weight: bold;
         }
 
-        .form-group input {
+        .form-group input,
+        .form-group select {
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
@@ -102,6 +103,38 @@
             margin: 10px 0;
             display: none;
         }
+
+        /* Styles for searchable dropdown */
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-input {
+            width: 100%;
+        }
+
+        .dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+        }
+
+        .dropdown-item {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f4f4f4;
+        }
     </style>
 </head>
 <body>
@@ -114,9 +147,11 @@
                         <label for="date">Date:</label>
                         <input type="date" id="date" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group dropdown">
                         <label for="customer">Customer:</label>
-                        <input type="text" id="customer" required>
+                        <input type="text" id="customerInput" placeholder="Search customer..." class="dropdown-input" required>
+                        <div id="customerDropdown" class="dropdown-list"></div>
+                        <input type="hidden" id="customer" required>
                     </div>
                     <div class="form-group">
                         <label for="description">Description:</label>
@@ -134,7 +169,7 @@
                     </div>
                     <div class="form-group">
                         <label for="kmsRun">KMS Run:</label>
-                        <input type="number" id="kmsRun" required>
+                        <input type="number" id="kmsRun" required readonly>
                     </div>
                 </div>
                 <button type="submit">Submit Entry</button>
@@ -164,13 +199,26 @@
     </div>
 
     <script>
-        // Replace with your Google Apps Script Web App URL
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwW38h46g-zrWnkrb7P7A6ROODfeOcnvTyBsTrTUQGNO9jYCgyFTWT-fTVc24s0v2nPsg/exec';
         
         const form = document.getElementById('tourForm');
         const table = document.getElementById('tourTable').getElementsByTagName('tbody')[0];
         const loadingDiv = document.getElementById('loading');
         const errorDiv = document.getElementById('error');
+        const meterStartInput = document.getElementById('meterStart');
+        const meterEndInput = document.getElementById('meterEnd');
+        const kmsRunInput = document.getElementById('kmsRun');
+        const customerInput = document.getElementById('customerInput');
+        const customerDropdown = document.getElementById('customerDropdown');
+        const customerHiddenInput = document.getElementById('customer');
+
+        const customers = [
+            'Customer A',
+            'Customer B',
+            'Customer C',
+            'Customer D',
+            'Customer E'
+        ];
 
         // Load existing entries
         async function loadEntries() {
@@ -196,6 +244,13 @@
             }
         }
 
+        // Calculate KMS Run
+        function calculateKmsRun() {
+            const meterStart = parseFloat(meterStartInput.value) || 0;
+            const meterEnd = parseFloat(meterEndInput.value) || 0;
+            kmsRunInput.value = meterEnd - meterStart;
+        }
+
         // Handle form submission
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -204,11 +259,11 @@
             
             const formData = {
                 date: document.getElementById('date').value,
-                customer: document.getElementById('customer').value,
+                customer: customerHiddenInput.value,
                 description: document.getElementById('description').value,
-                meterStart: document.getElementById('meterStart').value,
-                meterEnd: document.getElementById('meterEnd').value,
-                kmsRun: document.getElementById('kmsRun').value
+                meterStart: meterStartInput.value,
+                meterEnd: meterEndInput.value,
+                kmsRun: kmsRunInput.value
             };
 
             try {
@@ -219,6 +274,7 @@
 
                 if (response.ok) {
                     form.reset();
+                    customerDropdown.innerHTML = '';
                     loadEntries();
                 } else {
                     showError('Error submitting entry. Please try again.');
@@ -242,6 +298,40 @@
         function hideError() {
             errorDiv.style.display = 'none';
         }
+
+        // Event listeners for calculating KMS Run
+        meterStartInput.addEventListener('input', calculateKmsRun);
+        meterEndInput.addEventListener('input', calculateKmsRun);
+
+        // Searchable dropdown functionality
+        customerInput.addEventListener('input', () => {
+            const query = customerInput.value.toLowerCase();
+            customerDropdown.innerHTML = '';
+            if (query) {
+                const filteredCustomers = customers.filter(customer => customer.toLowerCase().includes(query));
+                filteredCustomers.forEach(customer => {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-item';
+                    item.textContent = customer;
+                    item.addEventListener('click', () => {
+                        customerInput.value = customer;
+                        customerHiddenInput.value = customer;
+                        customerDropdown.innerHTML = '';
+                    });
+                    customerDropdown.appendChild(item);
+                });
+                customerDropdown.style.display = filteredCustomers.length ? 'block' : 'none';
+            } else {
+                customerDropdown.style.display = 'none';
+            }
+        });
+
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!customerInput.contains(e.target) && !customerDropdown.contains(e.target)) {
+                customerDropdown.style.display = 'none';
+            }
+        });
 
         // Load entries when page loads
         loadEntries();
