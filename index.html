@@ -18,6 +18,100 @@
             background-color: #f5f5f5;
         }
 
+        /* Loading Overlay Styles */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none; /* Prevent interaction */
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            pointer-events: all; /* Allow interaction */
+        }
+
+        .spinner {
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Login Styles */
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .login-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .login-form .form-group {
+            margin-bottom: 20px;
+        }
+
+        .login-form label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .login-form input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .login-form button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .login-form button:hover {
+            background-color: #45a049;
+        }
+
+        .login-error {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+
+        /* Main Content Styles */
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -104,7 +198,7 @@
             display: none;
         }
 
-        /* Styles for searchable dropdown */
+        /* Dropdown Styles */
         .dropdown {
             position: relative;
         }
@@ -135,10 +229,47 @@
         .dropdown-item:hover {
             background-color: #f4f4f4;
         }
+
+        /* Hide main content initially */
+        #mainContent {
+            display: none;
+        }
+
+        /* Logout button */
+        .logout-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Login Form -->
+    <div id="loginContainer" class="login-container">
+        <h2>Login</h2>
+        <form id="loginForm" class="login-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit">Login</button>
+        </form>
+        <div id="loginError" class="login-error">Invalid username or password</div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="container">
+        <button id="logoutBtn" class="logout-btn">Logout</button>
         <div class="form-container">
             <h2>Vehicle Tour Entry Form</h2>
             <form id="tourForm">
@@ -163,11 +294,11 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="meterStart">Meter Start:</label>
-                        <input type="number" id="meterStart" required>
+                        <input type="number" id="meterStart" required min="0">
                     </div>
                     <div class="form-group">
                         <label for="meterEnd">Meter End:</label>
-                        <input type="number" id="meterEnd" required>
+                        <input type="number" id="meterEnd" required min="0">
                     </div>
                     <div class="form-group">
                         <label for="kmsRun">KMS Run:</label>
@@ -201,8 +332,22 @@
     </div>
 
     <script>
+        // Constants and Variables
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwW38h46g-zrWnkrb7P7A6ROODfeOcnvTyBsTrTUQGNO9jYCgyFTWT-fTVc24s0v2nPsg/exec';
-        
+        const validCredentials = {
+            username: '123',
+            password: '123'
+        };
+
+        // Login Elements
+        const loginForm = document.getElementById('loginForm');
+        const loginContainer = document.getElementById('loginContainer');
+        const mainContent = document.getElementById('mainContent');
+        const loginError = document.getElementById('loginError');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // Tour Form Elements
         const form = document.getElementById('tourForm');
         const table = document.getElementById('tourTable').getElementsByTagName('tbody')[0];
         const loadingDiv = document.getElementById('loading');
@@ -217,23 +362,44 @@
         const descriptionDropdown = document.getElementById('descriptionDropdown');
         const descriptionHiddenInput = document.getElementById('description');
 
-        const customers = [
-            'Customer A',
-            'Customer B',
-            'Customer C',
-            'Customer D',
-            'Customer E'
-        ];
+        // Sample Data
+        const customers = ['Customer A', 'Customer B', 'Customer C', 'Customer D', 'Customer E'];
+        const descriptions = ['Description A', 'Description B', 'Description C', 'Description D', 'Description E'];
 
-        const descriptions = [
-            'Description A',
-            'Description B',
-            'Description C',
-            'Description D',
-            'Description E'
-        ];
+        // Login Functions
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            if (isLoggedIn === 'true') {
+                showMainContent();
+            }
+        }
 
-        // Load existing entries
+        function showMainContent() {
+            loadingOverlay.classList.remove('active');
+            loginContainer.style.display = 'none';
+            mainContent.style.display = 'block';
+            loginError.style.display = 'none';
+        }
+
+        // Validation Function
+        function validateMeterValues() {
+            const meterStart = parseFloat(meterStartInput.value);
+            const meterEnd = parseFloat(meterEndInput.value);
+
+            if (meterStart < 0) {
+                showError('Meter Start cannot be negative.');
+                return false;
+            }
+
+            if (meterEnd < 0) {
+                showError('Meter End cannot be negative.');
+                return false;
+            }
+
+            return true;
+        }
+
+        // Tour Management Functions
         async function loadEntries() {
             try {
                 const response = await fetch(SCRIPT_URL);
@@ -257,18 +423,59 @@
             }
         }
 
-        // Calculate KMS Run
         function calculateKmsRun() {
             const meterStart = parseFloat(meterStartInput.value) || 0;
             const meterEnd = parseFloat(meterEndInput.value) || 0;
             kmsRunInput.value = meterEnd - meterStart;
         }
 
-        // Handle form submission
+        function showLoading(show) {
+            loadingOverlay.classList.toggle('active', show);
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            errorDiv.style.display = 'none';
+        }
+
+        // Event Listeners
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            showLoading(true); // Show loading overlay
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (username === validCredentials.username && password === validCredentials.password) {
+                sessionStorage.setItem('isLoggedIn', 'true');
+                setTimeout(showMainContent, 1000); // Simulate loading time
+            } else {
+                loginError.style.display = 'block';
+                showLoading(false); // Hide loading overlay
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            showLoading(true); // Show loading overlay
+            setTimeout(() => {
+                sessionStorage.removeItem('isLoggedIn');
+                location.reload();
+            }, 1000); // Simulate loading time
+        });
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            hideError(); // Hide any previous error messages
+
+            // Validate meter values
+            if (!validateMeterValues()) {
+                return; // Stop form submission if validation fails
+            }
+
             showLoading(true);
-            hideError();
             
             const formData = {
                 date: document.getElementById('date').value,
@@ -300,29 +507,16 @@
             }
         });
 
-        function showLoading(show) {
-            loadingDiv.style.display = show ? 'block' : 'none';
-        }
-
-        function showError(message) {
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-        }
-
-        function hideError() {
-            errorDiv.style.display = 'none';
-        }
-
-        // Event listeners for calculating KMS Run
         meterStartInput.addEventListener('input', calculateKmsRun);
         meterEndInput.addEventListener('input', calculateKmsRun);
 
-        // Searchable dropdown functionality for customers
         customerInput.addEventListener('input', () => {
             const query = customerInput.value.toLowerCase();
             customerDropdown.innerHTML = '';
             if (query) {
-                const filteredCustomers = customers.filter(customer => customer.toLowerCase().includes(query));
+                const filteredCustomers = customers.filter(customer => 
+                    customer.toLowerCase().includes(query)
+                );
                 filteredCustomers.forEach(customer => {
                     const item = document.createElement('div');
                     item.className = 'dropdown-item';
@@ -340,12 +534,13 @@
             }
         });
 
-        // Searchable dropdown functionality for descriptions
         descriptionInput.addEventListener('input', () => {
             const query = descriptionInput.value.toLowerCase();
             descriptionDropdown.innerHTML = '';
             if (query) {
-                const filteredDescriptions = descriptions.filter(description => description.toLowerCase().includes(query));
+                const filteredDescriptions = descriptions.filter(description => 
+                    description.toLowerCase().includes(query)
+                );
                 filteredDescriptions.forEach(description => {
                     const item = document.createElement('div');
                     item.className = 'dropdown-item';
@@ -363,7 +558,8 @@
             }
         });
 
-        // Initial load
+        // Initial check for login status
+        checkLoginStatus();
         loadEntries();
     </script>
 </body>
