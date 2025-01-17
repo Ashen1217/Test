@@ -153,9 +153,11 @@
                         <div id="customerDropdown" class="dropdown-list"></div>
                         <input type="hidden" id="customer" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group dropdown">
                         <label for="description">Description:</label>
-                        <input type="text" id="description" required>
+                        <input type="text" id="descriptionInput" placeholder="Search description..." class="dropdown-input" required>
+                        <div id="descriptionDropdown" class="dropdown-list"></div>
+                        <input type="hidden" id="description" required>
                     </div>
                 </div>
                 <div class="form-row">
@@ -211,6 +213,9 @@
         const customerInput = document.getElementById('customerInput');
         const customerDropdown = document.getElementById('customerDropdown');
         const customerHiddenInput = document.getElementById('customer');
+        const descriptionInput = document.getElementById('descriptionInput');
+        const descriptionDropdown = document.getElementById('descriptionDropdown');
+        const descriptionHiddenInput = document.getElementById('description');
 
         const customers = [
             'Customer A',
@@ -218,6 +223,14 @@
             'Customer C',
             'Customer D',
             'Customer E'
+        ];
+
+        const descriptions = [
+            'Description A',
+            'Description B',
+            'Description C',
+            'Description D',
+            'Description E'
         ];
 
         // Load existing entries
@@ -260,7 +273,7 @@
             const formData = {
                 date: document.getElementById('date').value,
                 customer: customerHiddenInput.value,
-                description: document.getElementById('description').value,
+                description: descriptionHiddenInput.value,
                 meterStart: meterStartInput.value,
                 meterEnd: meterEndInput.value,
                 kmsRun: kmsRunInput.value
@@ -275,6 +288,7 @@
                 if (response.ok) {
                     form.reset();
                     customerDropdown.innerHTML = '';
+                    descriptionDropdown.innerHTML = '';
                     loadEntries();
                 } else {
                     showError('Error submitting entry. Please try again.');
@@ -303,7 +317,7 @@
         meterStartInput.addEventListener('input', calculateKmsRun);
         meterEndInput.addEventListener('input', calculateKmsRun);
 
-        // Searchable dropdown functionality
+        // Searchable dropdown functionality for customers
         customerInput.addEventListener('input', () => {
             const query = customerInput.value.toLowerCase();
             customerDropdown.innerHTML = '';
@@ -326,14 +340,30 @@
             }
         });
 
-        // Hide dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!customerInput.contains(e.target) && !customerDropdown.contains(e.target)) {
-                customerDropdown.style.display = 'none';
+        // Searchable dropdown functionality for descriptions
+        descriptionInput.addEventListener('input', () => {
+            const query = descriptionInput.value.toLowerCase();
+            descriptionDropdown.innerHTML = '';
+            if (query) {
+                const filteredDescriptions = descriptions.filter(description => description.toLowerCase().includes(query));
+                filteredDescriptions.forEach(description => {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-item';
+                    item.textContent = description;
+                    item.addEventListener('click', () => {
+                        descriptionInput.value = description;
+                        descriptionHiddenInput.value = description;
+                        descriptionDropdown.innerHTML = '';
+                    });
+                    descriptionDropdown.appendChild(item);
+                });
+                descriptionDropdown.style.display = filteredDescriptions.length ? 'block' : 'none';
+            } else {
+                descriptionDropdown.style.display = 'none';
             }
         });
 
-        // Load entries when page loads
+        // Initial load
         loadEntries();
     </script>
 </body>
